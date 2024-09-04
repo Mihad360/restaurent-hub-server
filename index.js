@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-// var jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const app = express();
 const port = process.env.PORT || 5000;
@@ -26,15 +26,16 @@ async function run() {
     await client.connect();
 
     const foodCollection = client.db('foodDB').collection('food')
-    const menuCollection = client.db('menuDB').collection('menu')
+    const menuCollection = client.db('menuDB').collection('menus')
     const cartCollection = client.db('cartDB').collection('carts')
+    const userCollection = client.db('userDB').collection('users')
 
     app.get('/food', async(req, res)=> {
       const result = await foodCollection.find().toArray()
       res.send(result)
     })
 
-    app.get('/menu', async(req, res)=> {
+    app.get('/menus', async(req, res)=> {
         const result = await menuCollection.find().toArray()
         res.send(result)
     })
@@ -56,6 +57,41 @@ async function run() {
       const id = req.params.id
       const query = {_id: new ObjectId(id)}
       const result = await cartCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      const query = {email: user.email}
+      const isexistemail = await userCollection.findOne(query)
+      if(isexistemail){
+        return res.send({message: "email is already exist", insertedId: null})
+      }
+      const result = await userCollection.insertOne(user)
+      res.send(result)
+    })
+
+    app.get('/users', async(req, res) => {
+      const result = await userCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.delete('/users/:id', async(req, res) =>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await userCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    app.patch('/users/admin/:id', async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updatedAdmin = {
+          $set: {
+            role: "admin"
+          }
+      }
+      const result = await userCollection.updateOne(filter, updatedAdmin)
       res.send(result)
     })
 
