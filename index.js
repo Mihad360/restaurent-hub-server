@@ -60,12 +60,12 @@ async function run() {
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
-      const user = await userCollection.findOne(query);
+      const user = await userCollection.findOne(query); // we are finding the email from database to check is it admin or just a user by this role 
       const isAdmin = user?.role === "admin";
       if (!isAdmin) {
         return res.status(403).send({ message: "forbidden access" });
       }
-      next()
+      next();
     };
 
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
@@ -87,6 +87,12 @@ async function run() {
       const result = await foodCollection.find().toArray();
       res.send(result);
     });
+
+    app.post('/menus',verifyToken, verifyAdmin, async(req, res) => {
+      const additem = req.body;
+      const result = await menuCollection.insertOne(additem)
+      res.send(result)
+    })
 
     app.get("/menus", async (req, res) => {
       const result = await menuCollection.find().toArray();
@@ -127,30 +133,35 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", verifyToken,verifyAdmin, async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       // console.log(req.headers)
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
-    app.delete("/users/:id",verifyToken,verifyAdmin, async (req, res) => {
+    app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
     });
 
-    app.patch("/users/admin/:id",verifyToken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedAdmin = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await userCollection.updateOne(filter, updatedAdmin);
-      res.send(result);
-    });
+    app.patch(
+      "/users/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedAdmin = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await userCollection.updateOne(filter, updatedAdmin);
+        res.send(result);
+      }
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
