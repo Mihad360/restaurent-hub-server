@@ -60,7 +60,7 @@ async function run() {
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
-      const user = await userCollection.findOne(query); // we are finding the email from database to check is it admin or just a user by this role 
+      const user = await userCollection.findOne(query); // we are finding the email from database to check is it admin or just a user by this role
       const isAdmin = user?.role === "admin";
       if (!isAdmin) {
         return res.status(403).send({ message: "forbidden access" });
@@ -88,14 +88,45 @@ async function run() {
       res.send(result);
     });
 
-    app.post('/menus',verifyToken, verifyAdmin, async(req, res) => {
+    app.post("/menus", verifyToken, verifyAdmin, async (req, res) => {
       const additem = req.body;
-      const result = await menuCollection.insertOne(additem)
-      res.send(result)
-    })
+      const result = await menuCollection.insertOne(additem);
+      res.send(result);
+    });
 
     app.get("/menus", async (req, res) => {
       const result = await menuCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/menus/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await menuCollection.findOne(query)
+      res.send(result)
+    })
+
+    app.patch('/menus/:id', async(req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updateddoc = {
+        $set: {
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          recipe: item.recipe,
+          image: item.image
+        }
+      }
+      const result = await menuCollection.updateOne(filter, updateddoc)
+      res.send(result)
+    })
+
+    app.delete("/menus/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await menuCollection.deleteOne(query);
       res.send(result);
     });
 
