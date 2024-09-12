@@ -34,6 +34,7 @@ async function run() {
     const menuCollection = client.db("menuDB").collection("menus");
     const cartCollection = client.db("cartDB").collection("carts");
     const userCollection = client.db("userDB").collection("users");
+    const paymentCollection = client.db("paymentDB").collection("payments");
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -165,6 +166,26 @@ async function run() {
       })
     })
 
+    app.post('/payments', async(req, res) => {
+      const addpayment = req.body;
+      const result = await paymentCollection.insertOne(addpayment)
+
+      const query = {_id: {
+        $in : addpayment.cartIds.map(id => new ObjectId(id))
+      }}
+      const deleteCarts = await cartCollection.deleteMany(query)
+      res.send({result,deleteCarts})
+    })
+
+    app.get('/payments/:email',verifyToken, async(req, res) => {
+      const query = {email: req.params.email}
+      if(req.params.email !== req.decoded.email){
+        return res.status(403).send({message: 'forbidden access'})
+      }
+       const result = await paymentCollection.find(query).toArray()
+       res.send(result)
+    })
+
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
@@ -208,6 +229,26 @@ async function run() {
         res.send(result);
       }
     );
+
+    app.get('/admin-stats', async(req, res) => {
+      const users = await userCollection.estimatedDocumentCount()
+      const menuItems = await menuCollection.estimatedDocumentCount()
+      const orders = await cartCollection.estimatedDocumentCount()
+      // const payment = await paymentCollection.find().toArray()
+      // const totalprice = payment.reduce((total, item) => total+ item.price,0)
+
+      const result = await paymentCollection.aggregate([
+        {
+          
+        }
+      ])
+
+      res.send({
+        users,
+        menuItems,
+        orders,
+      })
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
