@@ -92,9 +92,26 @@ async function run() {
 
     app.post("/menus", verifyToken, verifyAdmin, async (req, res) => {
       const additem = req.body;
-      const result = await menuCollection.insertOne(additem);
-      res.send(result);
+    
+      // Ensure that `_id` is included in the request body
+      if (!additem._id) {
+        return res.status(400).send({ message: "Missing _id in request body" });
+      }
+    
+      try {
+        // Insert the document with the specified _id
+        const result = await menuCollection.insertOne(additem);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Error inserting document", error });
+      }
     });
+
+    // app.post("/menus", verifyToken, verifyAdmin, async (req, res) => {
+    //   const additem = req.body;
+    //   const result = await menuCollection.insertOne(additem);
+    //   res.send(result);
+    // });
 
     app.get("/menus", async (req, res) => {
       const result = await menuCollection.find().toArray();
@@ -168,14 +185,39 @@ async function run() {
 
     app.post('/payments', async(req, res) => {
       const addpayment = req.body;
+      // console.log(addpayment.menuIds, 'menu id')
+
       const result = await paymentCollection.insertOne(addpayment)
 
       const query = {_id: {
         $in : addpayment.cartIds.map(id => new ObjectId(id))
       }}
-      const deleteCarts = await cartCollection.deleteMany(query)
-      res.send({result,deleteCarts})
+      // const deleteCarts = await cartCollection.deleteMany(query)
+      res.send({result})
     })
+
+    // app.post('/payments', async (req, res) => {
+    //   const addpayment = req.body;
+    
+    //   // Convert menuIds and cartIds from string to ObjectId
+    //   if (addpayment.menuIds && Array.isArray(addpayment.menuIds)) {
+    //     addpayment.menuIds = addpayment.menuIds.map(id => new ObjectId(id));
+    //   }
+    
+    //   if (addpayment.cartIds && Array.isArray(addpayment.cartIds)) {
+    //     addpayment.cartIds = addpayment.cartIds.map(id => new ObjectId(id));
+    //   }
+    
+    //   console.log(addpayment.menuIds, 'menu id');
+    //   console.log(addpayment.cartIds, 'cart id');
+    
+    //   const result = await paymentCollection.insertOne(addpayment);
+    
+    //   const query = { _id: { $in: addpayment.cartIds } };
+    //   // const deleteCarts = await cartCollection.deleteMany(query);
+    
+    //   res.send({ result });
+    // });
 
     app.get('/payments/:email',verifyToken, async(req, res) => {
       const query = {email: req.params.email}
@@ -188,6 +230,7 @@ async function run() {
 
     app.post("/users", async (req, res) => {
       const user = req.body;
+      console.log(user)
       const query = { email: user.email };
       const isexistemail = await userCollection.findOne(query);
       if (isexistemail) {
@@ -230,7 +273,7 @@ async function run() {
       }
     );
 
-    app.get('/admin-stats', async(req, res) => {
+    app.get('/admin-stats', verifyToken, verifyAdmin, async(req, res) => {
       const users = await userCollection.estimatedDocumentCount()
       const menuItems = await menuCollection.estimatedDocumentCount()
       const orders = await cartCollection.estimatedDocumentCount()
@@ -239,15 +282,43 @@ async function run() {
 
       const result = await paymentCollection.aggregate([
         {
-          
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: '$price'
+            }
+          }
         }
-      ])
+      ]).toArray()
+
+      const revenue = result?.length > 0 ? result[0].totalRevenue : 0
 
       res.send({
         users,
         menuItems,
         orders,
+        revenue,
       })
+    })
+
+    // using aggregate pipeline for dashboard
+
+    app.get('/order-stats', async(req, res)=> {
+
+      const result = await paymentCollection.aggregate([
+        {
+          $unwind: '$menuItemIds'
+        },
+        {
+          $lookup: {
+            from: 'menus',
+            localField: 'menuItemIds',
+            foreignField: '_id',
+            as: 'menuItems'
+          }
+        },
+      ]).toArray();
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
