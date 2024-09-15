@@ -35,6 +35,18 @@ async function run() {
     const cartCollection = client.db("cartDB").collection("carts");
     const userCollection = client.db("userDB").collection("users");
     const paymentCollection = client.db("paymentDB").collection("payments");
+    const reviewCollection = client.db("reviewDB").collection("reviews");
+
+    app.post('/reviews', async(req, res) => {
+      const review = req.body;
+      const result = await reviewCollection.insertOne(review)
+      res.send(result)
+    })
+
+    app.get('/reviews', async(req, res) => {
+      const result = await reviewCollection.find().toArray()
+      res.send(result)
+    })
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -120,7 +132,7 @@ async function run() {
 
     app.get('/menus/:id', async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = {_id: id}
       const result = await menuCollection.findOne(query)
       res.send(result)
     })
@@ -128,7 +140,7 @@ async function run() {
     app.patch('/menus/:id', async(req, res) => {
       const item = req.body;
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
+      const filter = {_id: id}
       const updateddoc = {
         $set: {
           name: item.name,
@@ -144,7 +156,7 @@ async function run() {
 
     app.delete("/menus/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
+      const query = { _id: id };
       const result = await menuCollection.deleteOne(query);
       res.send(result);
     });
@@ -298,6 +310,22 @@ async function run() {
         menuItems,
         orders,
         revenue,
+      })
+    })
+
+    app.get('/user-stats',verifyToken, async(req, res) => {
+      const users = await userCollection.estimatedDocumentCount()
+      const menuItems = await menuCollection.estimatedDocumentCount()
+      const orders = await cartCollection.estimatedDocumentCount()
+      const payments = await paymentCollection.estimatedDocumentCount()
+      // const payment = await paymentCollection.find().toArray()
+      // const totalprice = payment.reduce((total, item) => total+ item.price,0)
+
+      res.send({
+        users,
+        menuItems,
+        orders,
+        payments
       })
     })
 
