@@ -10,6 +10,7 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: "http://localhost:5173",
+    // origin: "https://restaurent-hub.vercel.app",
   })
 );
 app.use(express.json());
@@ -147,7 +148,6 @@ async function run() {
           category: item.category,
           price: item.price,
           recipe: item.recipe,
-          image: item.image
         }
       }
       const result = await menuCollection.updateOne(filter, updateddoc)
@@ -212,15 +212,15 @@ async function run() {
     //   const addpayment = req.body;
     
     //   // Convert menuIds and cartIds from string to ObjectId
-    //   if (addpayment.menuIds && Array.isArray(addpayment.menuIds)) {
-    //     addpayment.menuIds = addpayment.menuIds.map(id => new ObjectId(id));
+    //   if (addpayment.menuItemIds && Array.isArray(addpayment.menuItemIds)) {
+    //     addpayment.menuItemIds = addpayment.menuItemIds.map(id => new ObjectId(id));
     //   }
     
     //   if (addpayment.cartIds && Array.isArray(addpayment.cartIds)) {
     //     addpayment.cartIds = addpayment.cartIds.map(id => new ObjectId(id));
     //   }
     
-    //   console.log(addpayment.menuIds, 'menu id');
+    //   console.log(addpayment.menuItemIds, 'menu id');
     //   console.log(addpayment.cartIds, 'cart id');
     
     //   const result = await paymentCollection.insertOne(addpayment);
@@ -335,17 +335,18 @@ async function run() {
 
       const result = await paymentCollection.aggregate([
         {
-          $unwind: '$menuItemIds'
+          $match: {status: 'pending'}
         },
         {
           $lookup: {
-            from: 'menus',
-            localField: 'menuItemIds',
-            foreignField: '_id',
-            as: 'menuItems'
+            from: 'menus',  // Target collection
+            localField: 'menuItemsId',  // Field from the paymentCollection
+            foreignField: '_id',  // Field from the menus collection
+            as: 'menuData'  // Output array containing matched menu data
           }
         },
       ]).toArray();
+      console.log(result)
       res.send(result)
     })
 
